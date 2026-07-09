@@ -114,11 +114,41 @@ void loop() {
             } else {
               client.print("{\"status\":0}");
             }
+          }else if (HTTP_req.indexOf("GET /styles.css") >= 0) {
+            if (LittleFS.exists("/styles.css")) {
+                File cssFile = LittleFS.open("/styles.css", "r");
+                client.println("HTTP/1.1 200 OK");
+                client.println("Content-Type: text/css"); // <-- CLAVE: Le decimos al navegador que esto es CSS
+                client.println("Connection: close");
+                client.println();
+        
+                uint8_t buffer[64];
+                while (cssFile.available()) {
+                    int bytes = cssFile.read(buffer, sizeof(buffer));
+                    client.write(buffer, bytes);
+                }
+                cssFile.close();
+              }
+          }else if (HTTP_req.indexOf("GET /script.js") >= 0) {
+            if (LittleFS.exists("/script.js")) {
+                File jsFile = LittleFS.open("/script.js", "r");
+                client.println("HTTP/1.1 200 OK");
+                client.println("Content-Type: application/javascript"); // <-- CLAVE: Esto es JS
+                client.println("Connection: close");
+                client.println();
+        
+                uint8_t buffer[64];
+                while (jsFile.available()) {
+                    int bytes = jsFile.read(buffer, sizeof(buffer));
+                    client.write(buffer, bytes);
+                }
+                jsFile.close();
+            }
           }
           // ------------------------------------------------------------------
           // CASO 3: Es una petición normal de la página web (Entrar a la IP)
           // ------------------------------------------------------------------
-          else {
+          else if (HTTP_req.indexOf("GET / ") >= 0 || HTTP_req.indexOf("GET /index.html") >= 0) {
               if (LittleFS.exists("/index.html")) {
                   File webFile = LittleFS.open("/index.html", "r");
                   
