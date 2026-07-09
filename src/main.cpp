@@ -1,22 +1,107 @@
+
+#include <SPI.h>
+#include <Ethernet.h>
+#include <LittleFS.h> // <-- 1. IMPORTANTE: Incluir la librería
+
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+IPAddress ip(192, 168, 1, 177);
+
+class WeidosEthernetServer : public EthernetServer {
+public:
+    WeidosEthernetServer(uint16_t port) : EthernetServer(port) {}
+    virtual void begin(uint16_t port) override { EthernetServer::begin(); }
+    virtual void begin() override { EthernetServer::begin(); }
+};
+
+WeidosEthernetServer EthServer(80);
+
+void setup() {
+  Serial.begin(115200);
+  while (!Serial) { ; }
+  Serial.println("Ethernet WebServer + LittleFS Example");
+
+  // 2. Inicializar el sistema de archivos LittleFS
+ if (!LittleFS.begin(true)) {
+    Serial.println("¡Error crítico en LittleFS!");
+  } else {
+    Serial.println("LittleFS iniciado/formateado con éxito.");
+  }
+  Serial.println("LittleFS montado correctamente.");
+
+  Ethernet.init(ETHERNET_CS); 
+  Ethernet.begin(mac, ip);
+
+  if (Ethernet.hardwareStatus() == EthernetNoHardware) {
+    Serial.println("Ethernet shield no encontrada.");
+    while (true) { delay(1); }
+  }
+
+  EthServer.begin();
+  Serial.print("Servidor en: ");
+  Serial.println(Ethernet.localIP());
+    if (LittleFS.exists("/index.html")) {
+        Serial.println("SII ESTA");
+    }else{
+
+      Serial.println("NO ESTA");
+    }
+}
+
+void loop() {
+  EthernetClient client = EthServer.available();
+  if (client) {
+    Serial.println("¡Nuevo cliente!");
+    bool currentLineIsBlank = true;
+    unsigned long timeout = millis();
+    
+    while (client.connected() && (millis() - timeout < 2000)) {
+      if (client.available()) {
+        char c = client.read();
+        timeout = millis(); 
+        
+        if (c == '\n' && currentLineIsBlank) {
+          
+          // 3. Comprobar si el archivo HTML existe en la memoria
+          if (LittleFS.exists("/index.html")) {
+              File webFile = LittleFS.open("/index.html", "r");
+              
+              // Enviamos cabeceras HTTP limpias
+              client.println("HTTP/1.1 200 OK");
+              client.println("Content-Type: text/html");
+              client.printf("Content-Length: %d\n", webFile.size()); // Tamaño dinámico
+              client.println("Connection: close");
+              client.println();
+              
+              // Leemos el archivo en bloques y lo enviamos al cliente
+              uint8_t buffer[64];
+              while (webFile.available()) {
+                  int bytesLeidos = webFile.read(buffer, sizeof(buffer));
+                  client.write(buffer, bytesLeidos);
+              }
+              webFile.close();
+          } else {
+              // Si por algún motivo el archivo no está en la memoria
+              client.println("HTTP/1.1 404 Not Found");
+              client.println("Content-Type: text/plain");
+              client.println();
+              client.println("Error 404: Archivo index.html no encontrado en LittleFS.");
+          }
+          break; 
+        }
+        
+        if (c == '\n') { currentLineIsBlank = true; } 
+        else if (c != '\r') { currentLineIsBlank = false; }
+      }
+    }
+    
+    delay(15); 
+    client.stop();
+    Serial.println("Cliente desconectado.");
+  }
+   
+}
+
 /*
- Web Server
-
- A simple web server that shows the value of the analog input pins.
- using an Arduino WIZnet Ethernet shield.
-
- Circuit:
- * Ethernet shield attached to pins 10, 11, 12, 13
- * Analog inputs attached to pins A0 through A5 (optional)
-
- created 18 Dec 2009
- by David A. Mellis
- modified 9 Apr 2012
- by Tom Igoe
- modified 02 Sept 2015
- by Arturo Guadalupi
- 
- */
-
 #include <SPI.h>
 #include <Ethernet.h>
 
@@ -45,13 +130,6 @@ public:
 WeidosEthernetServer EthServer(80);
 
 void setup() {
-  // You can use Ethernet.init(pin) to configure the CS pin
-  //Ethernet.init(10);  // Most Arduino shields
-  //Ethernet.init(5);   // MKR ETH Shield
-  //Ethernet.init(0);   // Teensy 2.0
-  //Ethernet.init(20);  // Teensy++ 2.0
-  //Ethernet.init(15);  // ESP8266 with Adafruit FeatherWing Ethernet
-  //Ethernet.init(33);  // ESP32 with Adafruit FeatherWing Ethernet
  
   // Open serial communications and wait for port to open:
   Serial.begin(115200);
@@ -123,3 +201,5 @@ void loop() {
     Serial.println("Cliente desconectado de forma limpia.");
   }
 }
+
+*/
