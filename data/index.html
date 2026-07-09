@@ -33,7 +33,26 @@
 
         p {
             color: #777;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
+        }
+
+        /* --- ESTILOS DE LA BOMBILLA --- */
+        .bombilla-contenedor {
+            margin-bottom: 25px;
+        }
+
+        .bombilla-svg {
+            width: 80px;
+            height: 80px;
+            fill: #999999; /* Color gris por defecto (Apagada) */
+            transition: all 0.4s ease;
+            filter: drop-shadow(0px 0px 0px transparent);
+        }
+
+        /* Esta clase la añadirá JavaScript cuando el ESP32 diga OK_ENCENDIDO */
+        .bombilla-encendida {
+            fill: #FFD700; /* Color dorado/amarillo brillante */
+            filter: drop-shadow(0px 0px 15px rgba(255, 215, 0, 0.8)); /* Efecto de brillo */
         }
 
         /* --- ESTILOS DEL INTERRUPTOR (SWITCH) --- */
@@ -89,6 +108,12 @@
         <h2>Salida Digital</h2>
         <p>Controla la bombilla o actuador</p>
         
+        <div class="bombilla-contenedor">
+            <svg id="bombilla" class="bombilla-svg" viewBox="0 0 24 24">
+                <path d="M12,2A7,7 0 0,0 5,9C5,11.38 6.19,13.47 8,14.74V17A1,1 0 0,0 9,18H15A1,1 0 0,0 16,17V14.74C17.81,13.47 19,11.38 19,9A7,7 0 0,0 12,2M9,21A1,1 0 0,0 10,22H14A1,1 0 0,0 15,21V20H9V21Z" />
+            </svg>
+        </div>
+        
         <label class="switch">
             <input type="checkbox" id="interruptor">
             <span class="slider"></span>
@@ -96,42 +121,56 @@
     </div>
 
     <script>
-        // 1. Buscamos el interruptor en el HTML usando su ID
         const miInterruptor = document.getElementById('interruptor');
+        const miBombilla = document.getElementById('bombilla');
 
-        // 2. Le decimos a JavaScript que se quede vigilando ("escuchando") cuando cambie el interruptor
+        // Volvemos a 'change' que es el evento nativo y correcto para los interruptores
         miInterruptor.addEventListener('change', function() {
-            
-            // 3. Revisamos la posición del interruptor (true si está activado, false si no)
-            let estado = miInterruptor.checked;
-            
-            // Convertimos ese true/false en un 1 o un 0 para que el ESP32 lo entienda más fácil
-            let valorEnviar = estado ? "1" : "0";
-            
-            console.log("El interruptor cambió a: " + valorEnviar); // Esto se ve en la consola del navegador (F12)
+    
+            // Guardamos el estado en el que acaba de quedar el interruptor tras el clic
+            let estadoActual = miInterruptor.checked; 
+            let valorEnviar = estadoActual ? "1" : "0";
 
-            // 4. Enviamos el mensaje al ESP32 en segundo plano usando 'fetch'
-            // Esto creará una petición tipo: /api/led?status=1 o /api/led?status=0
+            console.log("Enviando petición al ESP32... Estado solicitado: " + valorEnviar);
+
+            // Enviamos la petición al ESP32
             fetch('/api/led?status=' + valorEnviar)
             .then(response => {
-                if (response.ok) {
-                    // Si el ESP32 responde correctamente (HTTP 200 OK), no hacemos nada especial, todo salió bien
-                    console.log("¡ESP32 respondió con éxito!");
-                } else {
-                    // Si el ESP32 responde con un error, avisamos
-                    alert("Error en el servidor del ESP32");
-                    // Revertimos el interruptor a su posición anterior para no engañar al usuario
-                    miInterruptor.checked = !estado;
-                }
+                if (!response.ok) throw new Error("Error de red");
+                return response.text();
             })
-            .catch(error => {
-                // Si ni siquiera hay conexión (cable desconectado, router apagado, etc.)
-                console.error("Error de red:", error);
-                alert("No se pudo conectar con el ESP32");
-                // Revertimos el interruptor
-                miInterruptor.checked = !estado;
-            });
+            .then(textoDelEsp32 => {
+        
+            // Evaluamos lo que el ESP32 nos respondió de verdad
+            if (textoDelEsp32.includes("OK_ENCENDIDO")) {
+                console.log("El ESP32 confirma: Encendido.");
+                miInterruptor.checked = true; // Aseguramos que esté en ON
+                miBombilla.classList.add('bombilla-encendida'); // Encendemos la bombilla
+            } 
+            else if (textoDelEsp32.includes("OK_APAGADO")) {
+                console.log("El ESP32 confirma: Apagado.");
+                miInterruptor.checked = false; // Aseguramos que esté en OFF
+                miBombilla.classList.remove('bombilla-encendida'); // Apagamos la bombilla
+            } 
+            else {
+                // Si el ESP32 responde algo inesperado, deshacemos el cambio del usuario
+                console.warn("Respuesta inesperada, revirtiendo interruptor.");
+                miInterruptor.checked = !estadoActual;
+                miBombilla.classList.remove('bombilla-encendida');
+            }
+        })
+        .catch(error => {
+            console.error("Error al conectar con el hardware:", error);
+            alert("El hardware no respondió. Revirtiendo control.");
+            // Si falla la red, regresamos el interruptor a donde estaba para no mentir al usuario
+            miInterruptor.checked = !estadoActual;
+            if (miInterruptor.checked) {
+                miBombilla.classList.add('bombilla-encendida');
+            } else {
+                miBombilla.classList.remove('bombilla-encendida');
+            }
         });
+    });
     </script>
 
 </body>

@@ -75,28 +75,26 @@ void loop() {
           // CASO 1: El JavaScript movió el interruptor a ON (status=1)
           // ------------------------------------------------------------------
           if (HTTP_req.indexOf("GET /api/led?status=1") >= 0) {
-              Serial.println("--- INTERRUPTOR EN ON ---");
-              // Aquí en el futuro harás: digitalWrite(PIN_BOMBILLA, HIGH);
+            // 1. Aquí enciendes el hardware real: digitalWrite(PIN_BOMBILLA, HIGH);
+            Serial.println("Bombilla real ENCENDIDA");
 
-              // Le respondemos al JavaScript con un OK limpio y corto (sin HTML)
-              client.println("HTTP/1.1 200 OK");
-              client.println("Content-Type: text/plain");
-              client.println("Connection: close");
-              client.println();
-              client.println("LED Encendido");
+            // 2. Le respondes al JavaScript confirmando el éxito
+            client.println("HTTP/1.1 200 OK");
+            client.println("Content-Type: text/plain");
+            client.println("Connection: close");
+            client.println();
+            client.print("OK_ENCENDIDO"); // <-- El texto que espera el JavaScript
           }
-          // ------------------------------------------------------------------
-          // CASO 2: El JavaScript movió el interruptor a OFF (status=0)
-          // ------------------------------------------------------------------
           else if (HTTP_req.indexOf("GET /api/led?status=0") >= 0) {
-              Serial.println("--- INTERRUPTOR EN OFF ---");
-              // Aquí en el futuro harás: digitalWrite(PIN_BOMBILLA, LOW);
 
-              client.println("HTTP/1.1 200 OK");
-              client.println("Content-Type: text/plain");
-              client.println("Connection: close");
-              client.println();
-              client.println("LED Apagado");
+            Serial.println("Bombilla real APAGADA");
+
+            // 2. Le respondes al JavaScript
+            client.println("HTTP/1.1 200 OK");
+            client.println("Content-Type: text/plain");
+            client.println("Connection: close");
+            client.println();
+            client.print("OK_APAGADO"); // <-- El texto que espera el JavaScript
           }
           // ------------------------------------------------------------------
           // CASO 3: Es una petición normal de la página web (Entrar a la IP)
