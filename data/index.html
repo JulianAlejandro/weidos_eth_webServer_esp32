@@ -1,15 +1,138 @@
-<!DOCTYPE HTML>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Mi Servidor ESP32</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Dispositivo</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; background: #f0f0f0; padding: 50px; }
-        h1 { color: #333; }
+        /* Estilos generales de la página */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        /* Tarjeta contenedora */
+        .card {
+            background-color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 300px;
+        }
+
+        h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        p {
+            color: #777;
+            margin-bottom: 30px;
+        }
+
+        /* --- ESTILOS DEL INTERRUPTOR (SWITCH) --- */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        /* Ocultamos el checkbox HTML por defecto */
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        /* El deslizador de fondo */
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        /* El círculo blanco que se mueve */
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px; width: 26px;
+            left: 4px; bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        /* Cuando el checkbox está activado (ON), cambia el fondo a verde */
+        input:checked + .slider {
+            background-color: #4CAF50;
+        }
+
+        /* Cuando está activado, mueve el círculo blanco a la derecha */
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
     </style>
 </head>
 <body>
-    <h1>¡Hola Mundo desde LittleFS!</h1>
-    <p>Esta página web se lee directamente desde la memoria Flash del ESP32.</p>
+
+    <div class="card">
+        <h2>Salida Digital</h2>
+        <p>Controla la bombilla o actuador</p>
+        
+        <label class="switch">
+            <input type="checkbox" id="interruptor">
+            <span class="slider"></span>
+        </label>
+    </div>
+
+    <script>
+        // 1. Buscamos el interruptor en el HTML usando su ID
+        const miInterruptor = document.getElementById('interruptor');
+
+        // 2. Le decimos a JavaScript que se quede vigilando ("escuchando") cuando cambie el interruptor
+        miInterruptor.addEventListener('change', function() {
+            
+            // 3. Revisamos la posición del interruptor (true si está activado, false si no)
+            let estado = miInterruptor.checked;
+            
+            // Convertimos ese true/false en un 1 o un 0 para que el ESP32 lo entienda más fácil
+            let valorEnviar = estado ? "1" : "0";
+            
+            console.log("El interruptor cambió a: " + valorEnviar); // Esto se ve en la consola del navegador (F12)
+
+            // 4. Enviamos el mensaje al ESP32 en segundo plano usando 'fetch'
+            // Esto creará una petición tipo: /api/led?status=1 o /api/led?status=0
+            fetch('/api/led?status=' + valorEnviar)
+            .then(response => {
+                if (response.ok) {
+                    // Si el ESP32 responde correctamente (HTTP 200 OK), no hacemos nada especial, todo salió bien
+                    console.log("¡ESP32 respondió con éxito!");
+                } else {
+                    // Si el ESP32 responde con un error, avisamos
+                    alert("Error en el servidor del ESP32");
+                    // Revertimos el interruptor a su posición anterior para no engañar al usuario
+                    miInterruptor.checked = !estado;
+                }
+            })
+            .catch(error => {
+                // Si ni siquiera hay conexión (cable desconectado, router apagado, etc.)
+                console.error("Error de red:", error);
+                alert("No se pudo conectar con el ESP32");
+                // Revertimos el interruptor
+                miInterruptor.checked = !estado;
+            });
+        });
+    </script>
+
 </body>
 </html>

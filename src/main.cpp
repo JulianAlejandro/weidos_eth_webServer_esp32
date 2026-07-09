@@ -40,13 +40,105 @@ void setup() {
   Serial.print("Servidor en: ");
   Serial.println(Ethernet.localIP());
     if (LittleFS.exists("/index.html")) {
-        Serial.println("SII ESTA");
+        Serial.println("se encontro el fichero");
     }else{
-
-      Serial.println("NO ESTA");
+        Serial.println("No se encontro el fichero");
     }
 }
 
+void loop() {
+  EthernetClient client = EthServer.available();
+  if (client) {
+    Serial.println("¡Nuevo cliente!");
+    bool currentLineIsBlank = true;
+    unsigned long timeout = millis();
+    
+    String HTTP_req = ""; // <-- NUEVO: Aquí guardaremos la primera línea de la petición
+
+    while (client.connected() && (millis() - timeout < 2000)) {
+      if (client.available()) {
+        char c = client.read();
+        timeout = millis(); 
+        
+        // Guardamos los caracteres de la primera línea (hasta encontrar el salto de línea)
+        if (HTTP_req.length() < 100) {
+            HTTP_req += c;
+        }
+        
+        if (c == '\n' && currentLineIsBlank) {
+          
+          // Imprimimos en el Monitor Serie lo que el navegador nos pidió exactamente
+          Serial.print("Petición recibida: ");
+          Serial.println(HTTP_req);
+
+          // ------------------------------------------------------------------
+          // CASO 1: El JavaScript movió el interruptor a ON (status=1)
+          // ------------------------------------------------------------------
+          if (HTTP_req.indexOf("GET /api/led?status=1") >= 0) {
+              Serial.println("--- INTERRUPTOR EN ON ---");
+              // Aquí en el futuro harás: digitalWrite(PIN_BOMBILLA, HIGH);
+
+              // Le respondemos al JavaScript con un OK limpio y corto (sin HTML)
+              client.println("HTTP/1.1 200 OK");
+              client.println("Content-Type: text/plain");
+              client.println("Connection: close");
+              client.println();
+              client.println("LED Encendido");
+          }
+          // ------------------------------------------------------------------
+          // CASO 2: El JavaScript movió el interruptor a OFF (status=0)
+          // ------------------------------------------------------------------
+          else if (HTTP_req.indexOf("GET /api/led?status=0") >= 0) {
+              Serial.println("--- INTERRUPTOR EN OFF ---");
+              // Aquí en el futuro harás: digitalWrite(PIN_BOMBILLA, LOW);
+
+              client.println("HTTP/1.1 200 OK");
+              client.println("Content-Type: text/plain");
+              client.println("Connection: close");
+              client.println();
+              client.println("LED Apagado");
+          }
+          // ------------------------------------------------------------------
+          // CASO 3: Es una petición normal de la página web (Entrar a la IP)
+          // ------------------------------------------------------------------
+          else {
+              if (LittleFS.exists("/index.html")) {
+                  File webFile = LittleFS.open("/index.html", "r");
+                  
+                  client.println("HTTP/1.1 200 OK");
+                  client.println("Content-Type: text/html");
+                  client.printf("Content-Length: %d\n", webFile.size());
+                  client.println("Connection: close");
+                  client.println();
+                  
+                  uint8_t buffer[64];
+                  while (webFile.available()) {
+                      int bytesLeidos = webFile.read(buffer, sizeof(buffer));
+                      client.write(buffer, bytesLeidos);
+                  }
+                  webFile.close();
+              } else {
+                  client.println("HTTP/1.1 404 Not Found");
+                  client.println("Content-Type: text/plain");
+                  client.println();
+                  client.println("Error 404: Archivo index.html no encontrado.");
+              }
+          }
+          break; 
+        }
+        
+        if (c == '\n') { currentLineIsBlank = true; } 
+        else if (c != '\r') { currentLineIsBlank = false; }
+      }
+    }
+    
+    delay(15); 
+    client.stop();
+    Serial.println("Cliente desconectado.");
+  }
+}
+
+/*
 void loop() {
   EthernetClient client = EthServer.available();
   if (client) {
@@ -100,106 +192,4 @@ void loop() {
   }
    
 }
-
-/*
-#include <SPI.h>
-#include <Ethernet.h>
-
-// Enter a MAC address and IP address for your controller below.
-// The IP address will be dependent on your local network:
-byte mac[] = {
-  0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
-};
-IPAddress ip(192, 168, 1, 177);
-
-// Initialize the Ethernet server library
-// with the IP address and port you want to use
-// (port 80 is default for HTTP):
-
-class WeidosEthernetServer : public EthernetServer {
-public:
-    WeidosEthernetServer(uint16_t port) : EthernetServer(port) {}
-    virtual void begin(uint16_t port) override {
-        EthernetServer::begin(); 
-    }
-    virtual void begin() override {
-        EthernetServer::begin(); 
-    }
-};
-
-WeidosEthernetServer EthServer(80);
-
-void setup() {
- 
-  // Open serial communications and wait for port to open:
-  Serial.begin(115200);
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
-  }
-  Serial.println("Ethernet WebServer Example");
-
-  // start the Ethernet connection and the server:
-  Ethernet.init(ETHERNET_CS); 
-  Ethernet.begin(mac, ip);
-
-  // Check for Ethernet hardware present
-  if (Ethernet.hardwareStatus() == EthernetNoHardware) {
-    Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
-    while (true) {
-      delay(1); // do nothing, no point running without Ethernet hardware
-    }
-  }
-  if (Ethernet.linkStatus() == LinkOFF) {
-    Serial.println("Ethernet cable is not connected.");
-  }
-
-  // start the server
-  EthServer.begin();
-  Serial.print("server is at ");
-  Serial.println(Ethernet.localIP());
-}
-
-void loop() {
-  EthernetClient client = EthServer.available();
-  if (client) {
-    Serial.println("¡Nuevo cliente!");
-    bool currentLineIsBlank = true;
-    
-    // Almacenamos el tiempo actual para controlar el timeout
-    unsigned long timeout = millis();
-    
-    // El bucle se mantendrá SOLO si el cliente está conectado Y no han pasado más de 2 segundos
-    while (client.connected() && (millis() - timeout < 2000)) {
-      if (client.available()) {
-        char c = client.read();
-        
-        // Cada vez que el cliente nos envía un caracter, refrescamos el timeout
-        timeout = millis(); 
-        
-        if (c == '\n' && currentLineIsBlank) {
-          // [Aquí va todo tu bloque de enviar el HTTP y el HTML]
-          
-          client.println("HTTP/1.1 200 OK");
-          client.println("Content-Type: text/html");
-          client.println("Connection: close");
-          client.println();
-          client.println("<!DOCTYPE HTML><html>Hola Mundo</html>");
-          
-          break; 
-        }
-        
-        if (c == '\n') {
-          currentLineIsBlank = true;
-        } else if (c != '\r') {
-          currentLineIsBlank = false;
-        }
-      }
-    }
-    
-    delay(15); 
-    client.stop();
-    Serial.println("Cliente desconectado de forma limpia.");
-  }
-}
-
 */
