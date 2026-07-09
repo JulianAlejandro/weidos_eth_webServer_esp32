@@ -1,4 +1,53 @@
 
+
+
+#include <SPI.h>
+#include <Ethernet.h>
+#include <LittleFS.h>
+#include "MyWebServer.h" // <-- Incluimos tu nueva clase
+
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+IPAddress ip(192, 168, 1, 177);
+
+// Instanciamos tu clase pasando el puerto 80 y pasándole LittleFS directamente
+MyWebServer serverManager(80, LittleFS);
+
+void setup() {
+  Serial.begin(115200);
+  while (!Serial) { ; }
+  Serial.println("Servidor Modular con Clase Prototipo");
+
+  if (!LittleFS.begin(true)) {
+    Serial.println("¡Error crítico en LittleFS!");
+  } else {
+    Serial.println("LittleFS montado correctamente.");
+  }
+
+  Ethernet.init(ETHERNET_CS); 
+  Ethernet.begin(mac, ip);
+
+  if (Ethernet.hardwareStatus() == EthernetNoHardware) {
+    Serial.println("Ethernet shield no encontrada.");
+    while (true) { delay(1); }
+  }
+
+  // Iniciamos el servidor a través de la clase
+  serverManager.begin();
+  Serial.print("Servidor listo en: ");
+  Serial.println(Ethernet.localIP());
+}
+
+void loop() {
+  // Dejamos que la clase se encargue de todo el trabajo sucio de la red
+  serverManager.handleClient();
+  
+  // Si en el futuro necesitas interactuar con el estado del LED en tu Arduino, puedes hacer:
+  // if (serverManager.getLedStatus() == true) { 
+  //     digitalWrite(PIN_FISCO, HIGH); 
+  // }
+}
+
+/*
 #include <SPI.h>
 #include <Ethernet.h>
 #include <LittleFS.h> // <-- 1. IMPORTANTE: Incluir la librería
@@ -170,6 +219,13 @@ void loop() {
                   client.println();
                   client.println("Error 404: Archivo index.html no encontrado.");
               }
+          }else {
+              // COMODÍN: Cualquier otra cosa que no conozcamos (como el favicon.ico) se lleva un 404 directo sin leer LittleFS
+              client.println("HTTP/1.1 404 Not Found");
+              client.println("Content-Type: text/plain");
+              client.println("Connection: close");
+              client.println();
+              client.println("Error 404: Ruta no encontrada.");
           }
           break; 
         }
@@ -184,6 +240,9 @@ void loop() {
     Serial.println("Cliente desconectado.");
   }
 }
+
+*/
+
 
 /*
 void loop() {
