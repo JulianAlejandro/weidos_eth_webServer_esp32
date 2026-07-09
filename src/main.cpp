@@ -15,6 +15,8 @@ public:
 
 WeidosEthernetServer EthServer(80);
 
+bool ledEncendido = true;
+
 void setup() {
   Serial.begin(115200);
   while (!Serial) { ; }
@@ -75,6 +77,7 @@ void loop() {
           // CASO 1: El JavaScript movió el interruptor a ON (status=1)
           // ------------------------------------------------------------------
           if (HTTP_req.indexOf("GET /api/led?status=1") >= 0) {
+            ledEncendido = true;
             // 1. Aquí enciendes el hardware real: digitalWrite(PIN_BOMBILLA, HIGH);
             Serial.println("Bombilla real ENCENDIDA");
 
@@ -86,7 +89,7 @@ void loop() {
             client.print("OK_ENCENDIDO"); // <-- El texto que espera el JavaScript
           }
           else if (HTTP_req.indexOf("GET /api/led?status=0") >= 0) {
-
+            ledEncendido = false;
             Serial.println("Bombilla real APAGADA");
 
             // 2. Le respondes al JavaScript
@@ -95,6 +98,22 @@ void loop() {
             client.println("Connection: close");
             client.println();
             client.print("OK_APAGADO"); // <-- El texto que espera el JavaScript
+          }
+          else if(HTTP_req.indexOf("GET /api/estado") >= 0){
+
+            Serial.println("Enviando JSON de estado actual...");
+
+            client.println("HTTP/1.1 200 OK");
+            client.println("Content-Type: application/json"); // <-- Cambiamos el tipo a JSON
+            client.println("Connection: close");
+            client.println();
+    
+            // Construimos el JSON dinámicamente según nuestra variable de la RAM
+            if (ledEncendido) {
+              client.print("{\"status\":1}");
+            } else {
+              client.print("{\"status\":0}");
+            }
           }
           // ------------------------------------------------------------------
           // CASO 3: Es una petición normal de la página web (Entrar a la IP)
