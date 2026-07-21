@@ -1,3 +1,38 @@
+
+
+
+#ifndef MY_WEBSERVER_H
+#define MY_WEBSERVER_H
+
+#include <Arduino.h>
+#include <WiFi.h>      // <-- Cambiado: de Ethernet.h a WiFi.h
+#include <FS.h>
+#include <LittleFS.h>
+
+class MyWebServer {
+private:
+    WiFiServer _server;       // <-- Cambiado: WiFiServer
+    fs::FS* _fs;
+    bool _ledEncendido;
+    
+    // Métodos privados usando WiFiClient
+    void encriptarYEnviarArchivo(WiFiClient& client, const char* path, const char* contentType, bool sendLength = false);
+    void procesarPeticion(WiFiClient& client, String& HTTP_req);
+
+public:
+    MyWebServer(uint16_t port, fs::FS &fileSystem);
+    void begin();
+    void handleClient();
+    
+    bool getLedStatus() const { return _ledEncendido; }
+    void setLedStatus(bool status) { _ledEncendido = status; }
+};
+
+#endif
+
+
+// --------------------------ethernet web server -----------------
+/*
 #ifndef MY_WEBSERVER_H
 #define MY_WEBSERVER_H
 
@@ -40,3 +75,70 @@ public:
 };
 
 #endif
+*/
+
+// --------------------------cogio para el obtenedor de parametros------------------------------------
+/*
+#ifndef MY_WEBSERVER_H
+#define MY_WEBSERVER_H
+
+#include <Arduino.h>
+#include <Ethernet.h>
+#include <FS.h>
+#include <LittleFS.h>
+
+class WeidosEthernetServer : public EthernetServer {
+public:
+    WeidosEthernetServer(uint16_t port) : EthernetServer(port) {}
+    virtual void begin(uint16_t port) override { EthernetServer::begin(); }
+    virtual void begin() override { EthernetServer::begin(); }
+};
+
+class MyWebServer {
+private:
+    WeidosEthernetServer _server;
+    fs::FS* _fs;
+
+    // --- Almacenamiento de variables de Configuración ---
+    String _macAddress;
+    String _staticIp;
+    String _submask;
+    String _gateway;
+    
+    long _baudRate;
+    int  _dataBits;
+    String _parity;
+    int  _stopBits;
+    int  _interFrameDelay;
+    int  _responseTimeout;
+    int  _attempts;
+
+    // Métodos privados internos
+    void encriptarYEnviarArchivo(EthernetClient& client, const char* path, const char* contentType, bool sendLength = false);
+    void procesarPeticion(EthernetClient& client, String& HTTP_req);
+    void parsearConfiguracionPost(String& postData);
+
+public:
+    // Constructor
+    MyWebServer(uint16_t port, fs::FS &fileSystem);
+    
+    void begin();
+    void handleClient();
+
+    // --- MÉTODOS GETTERS (Para consultar desde tu loop o main) ---
+    String getMacAddress() const { return _macAddress; }
+    String getStaticIp() const { return _staticIp; }
+    String getSubmask() const { return _submask; }
+    String getGateway() const { return _gateway; }
+    
+    long getBaudRate() const { return _baudRate; }
+    int getDataBits() const { return _dataBits; }
+    String getParity() const { return _parity; }
+    int getStopBits() const { return _stopBits; }
+    int getInterFrameDelay() const { return _interFrameDelay; }
+    int getResponseTimeout() const { return _responseTimeout; }
+    int getAttempts() const { return _attempts; }
+};
+
+#endif
+*/

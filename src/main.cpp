@@ -1,5 +1,48 @@
 
+#include <WiFi.h>
+#include <LittleFS.h>
+#include "MyWebServer.h"
 
+const char* WIFI_SSID = "Juls";
+const char* WIFI_PASS = "tempura777";
+
+MyWebServer serverManager(80, LittleFS);
+
+void setup() {
+  Serial.begin(115200);
+  while (!Serial) { ; }
+  Serial.println("Servidor Web Wi-Fi HTTP (Sin cifrar)");
+
+  if (!LittleFS.begin(true)) {
+    Serial.println("¡Error crítico en LittleFS!");
+  } else {
+    Serial.println("LittleFS montado correctamente.");
+  }
+
+  // Conexión a la red Wi-Fi
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  Serial.print("Conectando a Wi-Fi");
+  
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("\n¡Wi-Fi Conectado!");
+
+  // Iniciamos el servidor
+  serverManager.begin();
+  Serial.print("Servidor HTTP listo en: http://");
+  Serial.println(WiFi.localIP());
+}
+
+void loop() {
+  serverManager.handleClient();
+}
+
+
+/*
 
 #include <SPI.h>
 #include <Ethernet.h>
@@ -46,6 +89,67 @@ void loop() {
   //     digitalWrite(PIN_FISCO, HIGH); 
   // }
 }
+
+
+
+*/
+
+
+
+//---------------------------------CODIGO PARA EL OBTENEDOR DE PARAMETROS----------------------------
+/*
+#include <SPI.h>
+#include <Ethernet.h>
+#include <LittleFS.h>
+#include "MyWebServer.h" // <-- Incluimos tu nueva clase
+
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+IPAddress ip(192, 168, 1, 177);
+
+// Instanciamos tu clase pasando el puerto 80 y pasándole LittleFS directamente
+MyWebServer serverManager(80, LittleFS);
+
+void setup() {
+  Serial.begin(115200);
+  while (!Serial) { ; }
+  Serial.println("Servidor Modular con Clase Prototipo");
+
+  if (!LittleFS.begin(true)) {
+    Serial.println("¡Error crítico en LittleFS!");
+  } else {
+    Serial.println("LittleFS montado correctamente.");
+  }
+
+  Ethernet.init(ETHERNET_CS); 
+  Ethernet.begin(mac, ip);
+
+  if (Ethernet.hardwareStatus() == EthernetNoHardware) {
+    Serial.println("Ethernet shield no encontrada.");
+    while (true) { delay(1); }
+  }
+
+  // Iniciamos el servidor a través de la clase
+  serverManager.begin();
+  Serial.print("Servidor listo en: ");
+  Serial.println(Ethernet.localIP());
+}
+
+void loop() {
+  // Dejamos que la clase se encargue de todo el trabajo sucio de la red
+  serverManager.handleClient();
+
+  int tiempoEsperaModbus = serverManager.getResponseTimeout(); 
+  long velocidadBaudios  = serverManager.getBaudRate();
+
+  
+  
+  // Si en el futuro necesitas interactuar con el estado del LED en tu Arduino, puedes hacer:
+  // if (serverManager.getLedStatus() == true) { 
+  //     digitalWrite(PIN_FISCO, HIGH); 
+  // }
+}
+
+*/
 
 /*
 #include <SPI.h>
@@ -241,61 +345,4 @@ void loop() {
   }
 }
 
-*/
-
-
-/*
-void loop() {
-  EthernetClient client = EthServer.available();
-  if (client) {
-    Serial.println("¡Nuevo cliente!");
-    bool currentLineIsBlank = true;
-    unsigned long timeout = millis();
-    
-    while (client.connected() && (millis() - timeout < 2000)) {
-      if (client.available()) {
-        char c = client.read();
-        timeout = millis(); 
-        
-        if (c == '\n' && currentLineIsBlank) {
-          
-          // 3. Comprobar si el archivo HTML existe en la memoria
-          if (LittleFS.exists("/index.html")) {
-              File webFile = LittleFS.open("/index.html", "r");
-              
-              // Enviamos cabeceras HTTP limpias
-              client.println("HTTP/1.1 200 OK");
-              client.println("Content-Type: text/html");
-              client.printf("Content-Length: %d\n", webFile.size()); // Tamaño dinámico
-              client.println("Connection: close");
-              client.println();
-              
-              // Leemos el archivo en bloques y lo enviamos al cliente
-              uint8_t buffer[64];
-              while (webFile.available()) {
-                  int bytesLeidos = webFile.read(buffer, sizeof(buffer));
-                  client.write(buffer, bytesLeidos);
-              }
-              webFile.close();
-          } else {
-              // Si por algún motivo el archivo no está en la memoria
-              client.println("HTTP/1.1 404 Not Found");
-              client.println("Content-Type: text/plain");
-              client.println();
-              client.println("Error 404: Archivo index.html no encontrado en LittleFS.");
-          }
-          break; 
-        }
-        
-        if (c == '\n') { currentLineIsBlank = true; } 
-        else if (c != '\r') { currentLineIsBlank = false; }
-      }
-    }
-    
-    delay(15); 
-    client.stop();
-    Serial.println("Cliente desconectado.");
-  }
-   
-}
 */
